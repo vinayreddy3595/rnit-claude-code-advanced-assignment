@@ -83,7 +83,7 @@ UI: AbortController on fetch, one Idempotency-Key per intent reused on retry, lo
 
 ```bash
 git init -b main
-git config user.email "chemsoman@gmail.com"; git config user.name "RNIT"   # repo-local only
+git config user.email "vinay.reddy@rnitss.com"; git config user.name "Vinay Reddy"   # repo-local only
 printf '* text=auto eol=lf\n' > .gitattributes
 git add -A && git commit -m "RNIT-TRAIN-101: tenant-safe, idempotent leave approval with Claude Code guards"
 ```
