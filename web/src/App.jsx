@@ -16,17 +16,20 @@ export default function App() {
   const intents = useRef(new Map()); // "id:decision" -> pending intent (kept until a final answer)
   const session = useRef(new AbortController()); // aborted when the signed-in user changes
 
-  const load = useCallback((signal) => {
-    setList({ state: 'loading', items: [] });
-    return fetch(API, { headers: { authorization: `Bearer ${token}` }, signal })
-      .then(async (res) => {
-        if (!res.ok) throw new Error(messageFor(res.status));
-        setList({ state: 'ready', items: await res.json() });
-      })
-      .catch((err) => {
-        if (err.name !== 'AbortError') setList({ state: 'error', items: [], error: err.message });
-      });
-  }, [token]);
+  const load = useCallback(
+    (signal) => {
+      setList({ state: 'loading', items: [] });
+      return fetch(API, { headers: { authorization: `Bearer ${token}` }, signal })
+        .then(async (res) => {
+          if (!res.ok) throw new Error(messageFor(res.status));
+          setList({ state: 'ready', items: await res.json() });
+        })
+        .catch((err) => {
+          if (err.name !== 'AbortError') setList({ state: 'error', items: [], error: err.message });
+        });
+    },
+    [token],
+  );
 
   useEffect(() => {
     // Switching user aborts the list fetch AND any approval in flight, so a stale
@@ -82,11 +85,17 @@ export default function App() {
       <label>
         Signed in as{' '}
         <select value={token} onChange={(e) => setToken(e.target.value)}>
-          {USERS.map((u) => <option key={u.token} value={u.token}>{u.label}</option>)}
+          {USERS.map((u) => (
+            <option key={u.token} value={u.token}>
+              {u.label}
+            </option>
+          ))}
         </select>
       </label>
 
-      <p role="status" aria-live="polite">{status}</p>
+      <p role="status" aria-live="polite">
+        {status}
+      </p>
 
       {list.state === 'loading' && <p>Loading requests…</p>}
       {list.state === 'error' && <p role="alert">{list.error}</p>}
@@ -94,7 +103,14 @@ export default function App() {
       {list.state === 'ready' && list.items.length > 0 && (
         <table>
           <caption>Leave requests</caption>
-          <thead><tr><th scope="col">ID</th><th scope="col">Days</th><th scope="col">Status</th><th scope="col">Action</th></tr></thead>
+          <thead>
+            <tr>
+              <th scope="col">ID</th>
+              <th scope="col">Days</th>
+              <th scope="col">Status</th>
+              <th scope="col">Action</th>
+            </tr>
+          </thead>
           <tbody>
             {list.items.map((r) => (
               <tr key={r.id}>
@@ -104,7 +120,11 @@ export default function App() {
                 <td>
                   {r.status === 'pending' && (
                     <>
-                      <button onClick={() => decide(r.id, 'approve')} disabled={busy.has(r.id)} aria-busy={busy.has(r.id)}>
+                      <button
+                        onClick={() => decide(r.id, 'approve')}
+                        disabled={busy.has(r.id)}
+                        aria-busy={busy.has(r.id)}
+                      >
                         {busy.has(r.id) ? 'Working…' : `Approve ${r.id}`}
                       </button>{' '}
                       <button onClick={() => decide(r.id, 'reject')} disabled={busy.has(r.id)}>

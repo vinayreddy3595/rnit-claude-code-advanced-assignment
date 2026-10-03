@@ -53,16 +53,20 @@ export function findUserByToken(db, token) {
 // Tenant-scoped: a request in another tenant is indistinguishable from a missing one.
 export function findRequest(db, id, tenantId) {
   return db
-    .prepare(`SELECT id, tenant_id AS tenantId, employee_id AS employeeId, days, status,
+    .prepare(
+      `SELECT id, tenant_id AS tenantId, employee_id AS employeeId, days, status,
                      decided_by AS decidedBy, comment
-              FROM leave_requests WHERE id = ? AND tenant_id = ?`)
+              FROM leave_requests WHERE id = ? AND tenant_id = ?`,
+    )
     .get(id, tenantId);
 }
 
 export function listRequests(db, tenantId) {
   return db
-    .prepare(`SELECT id, employee_id AS employeeId, days, status, decided_by AS decidedBy
-              FROM leave_requests WHERE tenant_id = ? ORDER BY id`)
+    .prepare(
+      `SELECT id, employee_id AS employeeId, days, status, decided_by AS decidedBy
+              FROM leave_requests WHERE tenant_id = ? ORDER BY id`,
+    )
     .all(tenantId);
 }
 
@@ -86,8 +90,10 @@ export function decideRequest(db, { id, actor, key, bodyHash, comment, decision 
   db.exec('BEGIN IMMEDIATE');
   try {
     const prior = db
-      .prepare(`SELECT body_hash AS bodyHash, response_code AS code, response_body AS body
-                FROM idempotency_keys WHERE tenant_id = ? AND actor_id = ? AND key = ?`)
+      .prepare(
+        `SELECT body_hash AS bodyHash, response_code AS code, response_body AS body
+                FROM idempotency_keys WHERE tenant_id = ? AND actor_id = ? AND key = ?`,
+      )
       .get(actor.tenantId, actor.id, key);
     if (prior) {
       db.exec('ROLLBACK'); // read-only path: nothing to commit
@@ -105,24 +111,29 @@ export function decideRequest(db, { id, actor, key, bodyHash, comment, decision 
       // Guarded transition: only pending -> approved|rejected, and only in the actor's tenant.
       // Whichever decision commits first wins; the other sees changes === 0 and gets 409.
       const changed = db
-        .prepare(`UPDATE leave_requests SET status = ?, decided_by = ?, comment = ?
-                  WHERE id = ? AND tenant_id = ? AND status = 'pending'`)
+        .prepare(
+          `UPDATE leave_requests SET status = ?, decided_by = ?, comment = ?
+                  WHERE id = ? AND tenant_id = ? AND status = 'pending'`,
+        )
         .run(newStatus, actor.id, comment ?? null, id, actor.tenantId).changes;
       if (changed !== 1) {
         result = { code: 409, body: { error: 'invalid_transition', status: request.status } };
       } else {
-        db.prepare(`INSERT INTO audit_events (tenant_id, request_id, actor_id, action)
-                    VALUES (?, ?, ?, ?)`).run(actor.tenantId, id, actor.id, newStatus);
+        db.prepare(
+          `INSERT INTO audit_events (tenant_id, request_id, actor_id, action)
+                    VALUES (?, ?, ?, ?)`,
+        ).run(actor.tenantId, id, actor.id, newStatus);
         result = { code: 200, body: { id, status: newStatus, decidedBy: actor.id } };
       }
     }
 
     // 404s are not stored: they reveal nothing and must not pin a key to a missing id.
     if (result.code !== 404) {
-      db.prepare(`INSERT INTO idempotency_keys
+      db.prepare(
+        `INSERT INTO idempotency_keys
                   (tenant_id, actor_id, key, body_hash, response_code, response_body)
-                  VALUES (?, ?, ?, ?, ?, ?)`)
-        .run(actor.tenantId, actor.id, key, bodyHash, result.code, JSON.stringify(result.body));
+                  VALUES (?, ?, ?, ?, ?, ?)`,
+      ).run(actor.tenantId, actor.id, key, bodyHash, result.code, JSON.stringify(result.body));
     }
     db.exec('COMMIT');
     return result;

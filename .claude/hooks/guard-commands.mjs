@@ -5,13 +5,15 @@
 import { readFileSync } from 'node:fs';
 
 function deny(reason) {
-  process.stdout.write(JSON.stringify({
-    hookSpecificOutput: {
-      hookEventName: 'PreToolUse',
-      permissionDecision: 'deny',
-      permissionDecisionReason: `Blocked by RNIT guard (${reason})`,
-    },
-  }));
+  process.stdout.write(
+    JSON.stringify({
+      hookSpecificOutput: {
+        hookEventName: 'PreToolUse',
+        permissionDecision: 'deny',
+        permissionDecisionReason: `Blocked by RNIT guard (${reason})`,
+      },
+    }),
+  );
   process.exit(0);
 }
 
@@ -24,8 +26,10 @@ try {
 }
 
 const DENY = [
-  [/prod[-._a-z0-9]*\.rnit/i, 'production host'],
+  [/prod(uction)?[-._a-z0-9]*\.(rnit|internal)/i, 'production host'],
   [/\bgit\b.*\bpush\b.*(--force|--force-with-lease|\s-f\b|\s\+\S)/i, 'force push'],
+  [/\bgit\s+reset\s+--hard\b/i, 'destroys working tree'],
+  [/\bkubectl\b[^|;&]*\bdelete\b/i, 'cluster delete'],
   [/\brm\s+(-[a-z]*\s+)*-?[a-z]*[rf][a-z]*\s+(-[a-z]*\s+)*\/(\*|\s|$)/i, 'rm on filesystem root'],
   [/Remove-Item\b.*-Recurse/i, 'recursive delete (PowerShell)'],
   [/\b(Invoke-WebRequest|Invoke-RestMethod|iwr|irm)\b/i, 'network download (PowerShell)'],

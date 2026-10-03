@@ -4,7 +4,11 @@ paths:
   - "web/src/**/*.js"
 ---
 
-- Ignore stale responses: every fetch in an effect uses an `AbortController` and aborts on cleanup.
-- A disabled button is not server idempotency. Keep one `Idempotency-Key` per user intent and reuse it on retry.
-- Every async view has loading, empty, error and success states; status changes are announced with `role="status"` / `aria-live`.
-- Never show a different message for "not found" and "other tenant" — both are 404.
+# RNIT React rules (from the course starter, globs adapted to web/src)
+
+- No server-state library is installed; keep fetching in `approvalClient.js` and do not add one incidentally.
+- Cancel or ignore obsolete requests: every fetch takes the current `AbortController` signal, aborted when the user changes.
+- Keep one `Idempotency-Key` per user intent (request id + decision) and reuse it on retry.
+- Represent loading, error, empty and success states explicitly; announce status with `role="status"` / `aria-live`.
+- A disabled button is user feedback, not server idempotency or authorization.
+- Show the same message for "not found" and "other tenant" (both are 404).

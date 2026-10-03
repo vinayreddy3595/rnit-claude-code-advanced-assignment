@@ -17,10 +17,15 @@ test('a retry of the same intent reuses the same Idempotency-Key', async () => {
 
 test('an approval can be aborted (stale response after switching user)', async () => {
   let seen;
-  const fakeFetch = async (_url, init) => { seen = init.signal; throw new DOMException('aborted', 'AbortError'); };
+  const fakeFetch = async (_url, init) => {
+    seen = init.signal;
+    throw new DOMException('aborted', 'AbortError');
+  };
   const controller = new AbortController();
   controller.abort();
-  await assert.rejects(sendDecision(createDecisionIntent('101', 'approve', 'ok'), 't', fakeFetch, controller.signal), { name: 'AbortError' });
+  await assert.rejects(sendDecision(createDecisionIntent('101', 'approve', 'ok'), 't', fakeFetch, controller.signal), {
+    name: 'AbortError',
+  });
   assert.equal(seen, controller.signal);
 });
 
@@ -34,7 +39,10 @@ test('404 message does not reveal whether the request exists in another tenant',
 
 test('reject goes to the reject endpoint with its own key', async () => {
   let url;
-  const fakeFetch = async (u) => { url = u; return { ok: true, json: async () => ({ status: 'rejected' }) }; };
+  const fakeFetch = async (u) => {
+    url = u;
+    return { ok: true, json: async () => ({ status: 'rejected' }) };
+  };
   await sendDecision(createDecisionIntent('101', 'reject', 'overlap'), 't', fakeFetch);
   assert.match(url, /\/101\/reject$/);
 });

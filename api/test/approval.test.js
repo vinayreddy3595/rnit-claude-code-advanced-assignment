@@ -109,7 +109,10 @@ test('C6: same key + different body -> 409 key-reuse (not just invalid transitio
 test('C6b: same key reused on a different request id -> 409, second request untouched', async () => {
   await approve(FIXTURES.managerB, 'k1');
   const res = await call('/api/requests/102/approve', {
-    user: FIXTURES.managerB, method: 'POST', key: 'k1', body: { comment: 'ok' },
+    user: FIXTURES.managerB,
+    method: 'POST',
+    key: 'k1',
+    body: { comment: 'ok' },
   });
   assert.equal(res.status, 409);
   assert.equal((await res.json()).error, 'idempotency_key_reused_with_different_body');
@@ -119,7 +122,10 @@ test('C6b: same key reused on a different request id -> 409, second request unto
 
 test('C6c: a key first used on a hidden/missing id still works on a valid id', async () => {
   const miss = await call('/api/requests/201/approve', {
-    user: FIXTURES.managerB, method: 'POST', key: 'k1', body: { comment: 'ok' },
+    user: FIXTURES.managerB,
+    method: 'POST',
+    key: 'k1',
+    body: { comment: 'ok' },
   });
   assert.equal(miss.status, 404); // #201 is South's
   const res = await approve(FIXTURES.managerB, 'k1');
@@ -138,9 +144,7 @@ test('C7: new key on an already-approved request -> 409 invalid transition', asy
 // node:sqlite is synchronous, so in one process these requests are handled one after another.
 // This proves the status guard; C8b proves behaviour across separate processes/connections.
 test('C8: burst of 10 approvals with different keys (one process) -> exactly one succeeds', async () => {
-  const results = await Promise.all(
-    Array.from({ length: 10 }, (_, i) => approve(FIXTURES.managerB, `race-${i}`)),
-  );
+  const results = await Promise.all(Array.from({ length: 10 }, (_, i) => approve(FIXTURES.managerB, `race-${i}`)));
   const codes = results.map((r) => r.status).sort();
   assert.equal(codes.filter((c) => c === 200).length, 1);
   assert.equal(codes.filter((c) => c === 409).length, 9);
@@ -152,9 +156,16 @@ async function race(jobs) {
   const gate = new Int32Array(new SharedArrayBuffer(4));
   const workerFile = fileURLToPath(new URL('./race-worker.js', import.meta.url));
   const actor = { id: FIXTURES.managerB.id, tenantId: 'north' };
-  const workers = jobs.map((job, i) =>
-    new Worker(workerFile, { workerData: { dbFile, gate, actor, key: `w-${i}`, decision: job } }));
-  const done = workers.map((w) => new Promise((ok, fail) => { w.once('message', ok); w.once('error', fail); }));
+  const workers = jobs.map(
+    (job, i) => new Worker(workerFile, { workerData: { dbFile, gate, actor, key: `w-${i}`, decision: job } }),
+  );
+  const done = workers.map(
+    (w) =>
+      new Promise((ok, fail) => {
+        w.once('message', ok);
+        w.once('error', fail);
+      }),
+  );
   await new Promise((r) => setTimeout(r, 300)); // let every worker open its connection
   Atomics.store(gate, 0, 1);
   Atomics.notify(gate, 0);
@@ -170,7 +181,10 @@ test('C8b: 6 worker threads, own DB connections, approve at the same instant -> 
 
 test('C10: manager B rejects pending #101 -> rejected, one event', async () => {
   const res = await call('/api/requests/101/reject', {
-    user: FIXTURES.managerB, method: 'POST', key: 'r1', body: { comment: 'overlap' },
+    user: FIXTURES.managerB,
+    method: 'POST',
+    key: 'r1',
+    body: { comment: 'overlap' },
   });
   assert.equal(res.status, 200);
   assert.equal((await res.json()).status, 'rejected');
@@ -190,7 +204,10 @@ test('C11: approve and reject race (separate connections) -> one transition wins
 test('C12: reject after approve -> 409 invalid transition, status stays approved', async () => {
   await approve(FIXTURES.managerB, 'k1');
   const res = await call('/api/requests/101/reject', {
-    user: FIXTURES.managerB, method: 'POST', key: 'r1', body: {},
+    user: FIXTURES.managerB,
+    method: 'POST',
+    key: 'r1',
+    body: {},
   });
   assert.equal(res.status, 409);
   assert.equal((await res.json()).error, 'invalid_transition');
@@ -205,7 +222,10 @@ test('C13: tenantId in the body is not authority (manager C sends tenantId: nort
 
 test('C14: employee A rejects #101 -> 403', async () => {
   const res = await call('/api/requests/101/reject', {
-    user: FIXTURES.employeeA, method: 'POST', key: 'r1', body: {},
+    user: FIXTURES.employeeA,
+    method: 'POST',
+    key: 'r1',
+    body: {},
   });
   assert.equal(res.status, 403);
   assert.equal(countEvents(db, '101', 'north'), 0);
