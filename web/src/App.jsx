@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { API, createDecisionIntent, sendDecision, messageFor } from './approvalClient.js';
+import { API, createDecisionIntent, sendDecision, messageFor, visibleList } from './approvalClient.js';
 
 // Synthetic demo users (see api/src/seed.js). Never real credentials.
 const USERS = [
@@ -10,7 +10,8 @@ const USERS = [
 
 export default function App() {
   const [token, setToken] = useState(USERS[1].token);
-  const [list, setList] = useState({ state: 'loading', items: [] });
+  const [ownedList, setList] = useState({ owner: null, state: 'loading', items: [] });
+  const list = visibleList(ownedList, token); // never render another user's rows (ISSUE-17)
   const [status, setStatus] = useState('');
   const [busy, setBusy] = useState(() => new Set()); // request ids with an approval in flight
   const intents = useRef(new Map()); // "id:decision" -> pending intent (kept until a final answer)
@@ -18,14 +19,14 @@ export default function App() {
 
   const load = useCallback(
     (signal) => {
-      setList({ state: 'loading', items: [] });
+      setList({ owner: token, state: 'loading', items: [] });
       return fetch(API, { headers: { authorization: `Bearer ${token}` }, signal })
         .then(async (res) => {
           if (!res.ok) throw new Error(messageFor(res.status));
-          setList({ state: 'ready', items: await res.json() });
+          setList({ owner: token, state: 'ready', items: await res.json() });
         })
         .catch((err) => {
-          if (err.name !== 'AbortError') setList({ state: 'error', items: [], error: err.message });
+          if (err.name !== 'AbortError') setList({ owner: token, state: 'error', items: [], error: err.message });
         });
     },
     [token],

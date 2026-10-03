@@ -46,3 +46,10 @@ test('reject goes to the reject endpoint with its own key', async () => {
   await sendDecision(createDecisionIntent('101', 'reject', 'overlap'), 't', fakeFetch);
   assert.match(url, /\/101\/reject$/);
 });
+
+test('ISSUE-17: a list loaded for another user is never shown, even for one render', async () => {
+  const { visibleList } = await import('./approvalClient.js');
+  const northList = { owner: 'tok-north-manager-b', state: 'ready', items: [{ id: '101' }] };
+  assert.deepEqual(visibleList(northList, 'tok-south-manager-c'), { state: 'loading', items: [] });
+  assert.equal(visibleList(northList, 'tok-north-manager-b'), northList);
+});

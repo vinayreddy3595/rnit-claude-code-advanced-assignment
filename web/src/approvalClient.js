@@ -11,6 +11,15 @@ const MESSAGES = {
   409: 'This request was already decided by someone else, or the retry did not match the original.',
 };
 
+/**
+ * ISSUE-17: state updates after a user switch land one render late, so a list is tagged with
+ * the token it was loaded for and is shown only to that user. Correct by construction.
+ */
+const LOADING = { state: 'loading', items: [] };
+export function visibleList(list, token) {
+  return list.owner === token ? list : LOADING;
+}
+
 export function messageFor(status) {
   return MESSAGES[status] ?? 'Something went wrong. Your decision was not recorded.';
 }
