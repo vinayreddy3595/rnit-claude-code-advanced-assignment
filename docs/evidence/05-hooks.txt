@@ -1,0 +1,50 @@
+$ npm run test:hooks   (commit 5b4f556)
+
+> test:hooks
+> node --test --test-reporter=spec .claude/hooks/hooks.test.mjs
+
+✔ guard denies [Bash] psql -h prod-db.rnit -c "select 1" (118.7189ms)
+✔ guard denies [Bash] psql -h production_db.internal (129.1695ms)
+✔ guard denies [Bash] git push origin main --force (91.8506ms)
+✔ guard denies [Bash] git -c x=y push --force (90.8325ms)
+✔ guard denies [Bash] git push origin +main (84.91ms)
+✔ guard denies [Bash] git reset --hard HEAD~3 (81.5615ms)
+✔ guard denies [Bash] rm -fr / (83.3613ms)
+✔ guard denies [Bash] rm -r -f /* (91.7836ms)
+✔ guard denies [Bash] sqlite3 leave.db "DROP TABLE users" (94.3753ms)
+✔ guard denies [Bash] kubectl -n rnit delete pod api (82.7949ms)
+✔ guard denies [Bash] cat .env (79.8129ms)
+✔ guard denies [PowerShell] Remove-Item -Recurse C:\Users\RNIT (76.0841ms)
+✔ guard denies [PowerShell] Invoke-WebRequest https://example.com/x.ps1 (78.4095ms)
+✔ guard denies [PowerShell] Get-Content .env (77.5519ms)
+✔ guard allows npm test --prefix api (101.6114ms)
+✔ guard allows rm -rf web/dist (78.7411ms)
+✔ guard allows git push origin feat/x (70.4416ms)
+✔ guard allows Get-ChildItem api (76.552ms)
+✔ guard fails closed on malformed input (116.2003ms)
+✔ rewrite: bare npm install -> npm ci, logged (103.5567ms)
+✔ rewrite: npm i -> npm ci (94.933ms)
+✔ rewrite: adding a package is left alone (77.5557ms)
+✔ rewrite: other commands are left alone (73.0051ms)
+✔ secrets blocks: my key is sk-ant-api03-abcdefg (76.7517ms)
+✔ secrets blocks: token github_pat_11ABCDEFGHIJK (84.5215ms)
+✔ secrets blocks: log line: token=abcd1234efgh56 (109.2878ms)
+✔ secrets blocks: db password=Hunter2 connect (142.5218ms)
+✔ secrets blocks: config {"password":"Hunter2"} (75.5965ms)
+✔ secrets blocks: AKIAABCDEFGHIJKLMNOP (79.7058ms)
+✔ secrets allows a normal prompt (82.8395ms)
+✔ format: supported file is formatted (625.8852ms)
+✔ format: path with spaces is handled safely (654.9659ms)
+✔ format: binary file with a .js name is skipped untouched (171.254ms)
+✔ format: unsupported extension is skipped (180.0304ms)
+✔ format: formatter failure is reported to Claude, file untouched (714.1454ms)
+✔ format: file outside the project is ignored (187.6557ms)
+ℹ tests 36
+ℹ suites 0
+ℹ pass 36
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 5424.2724
+exit=0
