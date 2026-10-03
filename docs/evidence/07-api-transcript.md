@@ -1,4 +1,4 @@
-# API request/response evidence — 2026-10-03T10:41:17.402Z
+# API request/response evidence — 2026-10-03T10:53:04.143Z
 
 Captured by `npm run evidence:capture` against a fresh synthetic database (real Express app, real SQLite).
 Bearer tokens are synthetic and still redacted. Order matters: each call runs against the state left by the previous one.

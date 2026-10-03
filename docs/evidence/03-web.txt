@@ -1,22 +1,24 @@
-$ npm test --prefix web   (commit 5b4f556)
+$ npm test --prefix web   (commit 180922c)
 
 > rnit-leave-web@1.0.0 test
 > node --test --test-reporter=spec src/approvalClient.test.js
 
-✔ a retry of the same intent reuses the same Idempotency-Key (6.064ms)
-✔ an approval can be aborted (stale response after switching user) (2.0209ms)
-✔ a new intent gets a new key (0.7772ms)
-✔ 404 message does not reveal whether the request exists in another tenant (0.5115ms)
-✔ reject goes to the reject endpoint with its own key (0.533ms)
-✔ ISSUE-17: a list loaded for another user is never shown, even for one render (1.4238ms)
-ℹ tests 6
+✔ a retry of the same intent reuses the same Idempotency-Key (5.8939ms)
+✔ an approval can be aborted (stale response after switching user) (2.8426ms)
+✔ a new intent gets a new key (0.4612ms)
+✔ 404 message does not reveal whether the request exists in another tenant (0.5378ms)
+✔ reject goes to the reject endpoint with its own key (0.3829ms)
+✔ ISSUE-17: a list loaded for another user is never shown, even for one render (0.94ms)
+✔ 409 messages tell a race apart from a mismatched retry (0.4136ms)
+✔ 403 and 5xx messages are accurate for reject and after a possible commit (0.246ms)
+ℹ tests 8
 ℹ suites 0
-ℹ pass 6
+ℹ pass 8
 ℹ fail 0
 ℹ cancelled 0
 ℹ skipped 0
 ℹ todo 0
-ℹ duration_ms 147.9712
+ℹ duration_ms 141.8336
 exit=0
 
 $ npm run build --prefix web
@@ -30,7 +32,7 @@ transforming...
 rendering chunks...
 computing gzip size...
 dist/index.html                  0.32 kB │ gzip:  0.23 kB
-dist/assets/index-DdZWArz8.js  223.53 kB │ gzip: 70.21 kB
+dist/assets/index-Bsi2xPNv.js  223.77 kB │ gzip: 70.32 kB
 
-✓ built in 213ms
+✓ built in 214ms
 exit=0
