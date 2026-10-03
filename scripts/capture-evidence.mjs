@@ -108,7 +108,11 @@ async function apiTranscript() {
     key: 'k1',
     body: { comment: 'ok', tenantId: 'north' },
   });
-  await call('C4 North manager approves #101', 'POST', '/101/approve', { token: B, key: 'k1', body: { comment: 'ok' } });
+  await call('C4 North manager approves #101', 'POST', '/101/approve', {
+    token: B,
+    key: 'k1',
+    body: { comment: 'ok' },
+  });
   await call('C5 same key, same body (retry)', 'POST', '/101/approve', {
     token: B,
     key: 'k1',
@@ -181,7 +185,11 @@ async function uiShots() {
     await page.select('select', 'tok-south-manager-c');
     await page.waitForFunction(() => document.querySelector('table') && !document.body.innerText.includes('\n101\t'));
     await page.waitForSelector('table');
-    await shot('04-manager-c-south', 'Switch user to Manager C (South)', 'Only South request #201; North #101 not listed');
+    await shot(
+      '04-manager-c-south',
+      'Switch user to Manager C (South)',
+      'Only South request #201; North #101 not listed',
+    );
 
     await page.select('select', 'tok-north-employee-a');
     await page.waitForSelector('button ::-p-text(Approve 102)');

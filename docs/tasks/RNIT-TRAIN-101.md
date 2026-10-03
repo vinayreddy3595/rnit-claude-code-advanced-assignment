@@ -24,17 +24,17 @@ out-of-scope changes, slices with stopping points, rollback approach.
 | Step | Artifact | Result |
 |---|---|---|
 | Baseline | first commit `477ff55`, `npm test --prefix api` | 11 passed |
-| Static | [01-lint.txt](../evidence/01-lint.txt) | exit 0 |
-| API (real HTTP + SQLite) | [02-api-tests.txt](../evidence/02-api-tests.txt) | see file |
-| Client + build | [03-web.txt](../evidence/03-web.txt) | see file |
-| Mutation checks | [04-mutation.txt](../evidence/04-mutation.txt) | see file |
-| Hooks | [05-hooks.txt](../evidence/05-hooks.txt) | see file |
+| Static + format | [01-lint.txt](../evidence/01-lint.txt) | exit 0, Prettier clean |
+| API (real HTTP + SQLite) | [02-api-tests.txt](../evidence/02-api-tests.txt) | 21 pass, 0 fail |
+| Client + build | [03-web.txt](../evidence/03-web.txt) | 8 pass, 0 fail; build OK |
+| Mutation checks | [04-mutation.md](../evidence/04-mutation.md) | M1–M5 red as intended; M1b green (documented defence in depth) |
+| Hooks | [05-hooks.txt](../evidence/05-hooks.txt) | 36 pass, 0 fail |
 | Read-only review | [06-review.md](../evidence/06-review.md) | 12 findings, all fixed |
 | API request/response | [07-api-transcript.md](../evidence/07-api-transcript.md) | 10 calls, sanitized |
 | Live Claude Code drills | [08-live-claude-drills.md](../evidence/08-live-claude-drills.md) | 5 drills |
 | UI states | [09-ui-evidence.md](../evidence/09-ui-evidence.md) | 6 states, desktop + phone |
-| Integration review | [10-integration-review.md](../evidence/10-integration-review.md) | see file |
-| Evidence skill run | [11-rnit-evidence-skill.md](../evidence/11-rnit-evidence-skill.md) | see file |
+| Integration review | [10-integration-review.md](../evidence/10-integration-review.md) | no cross-tenant path; 8 findings, 5 fixed, 3 kept as gaps |
+| Evidence skill run | [11-rnit-evidence-skill.md](../evidence/11-rnit-evidence-skill.md) | ran all suites; reported missing C15 (since added) |
 
 Unresolved checks are listed under **Handoff → Not run**.
 
@@ -60,6 +60,7 @@ in-memory idempotency map (fails after restart).
 - Course training repo not accessible → no focused diff against it (assignment 2 needs it).
 - No CI pipeline or protected branch on the GitHub repo yet.
 - No sandbox enabled; deny rules don't cover a script that opens `.env` itself.
+- App-level test that a late response after a user switch is ignored (needs jsdom + Testing Library; only the helper is tested).
 - Live secret-prompt drill not run (hook tested by `npm run test:hooks` only, to keep secrets out of transcripts).
 - No real screen reader test; no multi-machine API deployment test.
 - Workspace not marked trusted in Claude Code, so settings `allow` entries were ignored during live drills.
@@ -67,6 +68,8 @@ in-memory idempotency map (fails after restart).
 **Remaining risks**
 - Static synthetic tokens are not production authentication.
 - UI shows Approve/Reject to employees (server refuses with 403).
+- Employees can list every request in their own tenant (no cross-tenant leak; visibility within a tenant is not in the contract).
+- The tenant filter inside the guarded UPDATE has no independent test (mutation M1b stays green behind findRequest).
 - Pattern-based hooks can be bypassed by a script Claude writes and runs.
 - `node` must be on PATH for hooks to run; if it isn't, Claude Code reports a hook error and the hook does not block.
 

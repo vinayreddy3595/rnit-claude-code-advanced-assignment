@@ -66,6 +66,17 @@ Stays green: the lookup in findRequest already returned 404, so this second filt
 ✖ C6b: same key reused on a different request id -> 409, second request untouched (70.6731ms)
 ```
 
+## M5: drop tenant + actor scoping from the idempotency lookup (added after the integration review, from 9c3ef3f)
+```diff
+-                FROM idempotency_keys WHERE tenant_id = ? AND actor_id = ? AND key = ?`,
++                FROM idempotency_keys WHERE ? IS NOT NULL AND ? IS NOT NULL AND key = ?`,
+```
+```
+ℹ fail 1
+ℹ pass 20
+✖ C15: South manager reuses North manager key -> no replay of the North answer (404) (92.7334ms)
+```
+
 ## Restored
 ```
 ℹ pass 19

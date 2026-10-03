@@ -7,7 +7,7 @@
     "start": "node src/server.js",
     "seed": "node src/seed.js",
     "test": "node --test --test-reporter=spec test/approval.test.js",
-    "lint": "node --check src/app.js && node --check src/db.js && node --check src/auth.js && node --check src/routes/requests.js"
+    "lint": "node --check src/app.js && node --check src/db.js && node --check src/auth.js && node --check src/routes/requests.js && node --check src/seed.js && node --check src/server.js"
   },
   "dependencies": {
     "express": "^5.2.1"

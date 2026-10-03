@@ -1,131 +1,102 @@
-# Steps log — everything done, in order, with the exact commands
+# Steps log — everything done, in order, with the commands
 
-Course: **RNIT Claude Code Advanced** · Ticket: **RNIT-TRAIN-101 (leave approval)** · Stack: **Node + Express API, React client**
-Machine: Windows 11, Git Bash, Node v24.19.0, Git 2.55. Date: 2026-10-03.
+Course: **RNIT Claude Code Advanced** · Ticket **RNIT-TRAIN-101** · Stack: Node + Express API, React client.
+Machine: Windows 11, Git Bash, Node v24.19.0, Git 2.55, Claude Code 2.1.288. Date: 2026-10-03.
+Git history has the exact commits for each step (`git log --oneline`).
 
----
-
-## Step 0 — Environment check
-
-```bash
-node -v        # "command not found": Node is installed but not on PATH
-ls "/c/Program Files/nodejs"
-export PATH="/c/Program Files/nodejs:$PATH"   # needed in every new Git Bash window
-node -v        # v24.19.0
-git --version  # 2.55.0
-jq --version   # not installed -> hooks written in Node instead of bash+jq
-```
-
-## Step 1 — Move 1: Audit before delegating (plan mode)
+## 0 · Environment
 
 ```bash
-claude --permission-mode plan
-```
-Prompt: *"Inspect this repo for the leave-approval change. Do not implement. Cite file path + symbol for every finding. Mark assumptions separately. Return the smallest affected file set."*
-
-Output → [docs/audit.md](docs/audit.md) (F1 missing tenant filter, F2 role ≠ authorization, F3 mocked tests,
-F4 no persisted idempotency, F5 no state guard). Verified commands → [docs/engineering/commands.md](docs/engineering/commands.md).
-
-## Step 2 — Write the contract before code
-
-Behaviour table (401 / 403 / 404 / approved-once / replay / 409) → [docs/contract.md](docs/contract.md).
-
-## Step 3 — Move 2: Plan, then attack the plan
-
-Challenge question: *"Which assumption lets every test pass while production is still wrong?"*
-Answer: mocked `requireUser()` + in-memory idempotency map. Revised plan, transaction boundary and 4 slices → [docs/plan.md](docs/plan.md).
-
-## Step 4 — Implement the API (slices 1–2)
-
-```bash
-mkdir rnit-claude-code-advanced-assignment && cd rnit-claude-code-advanced-assignment
-# wrote api/package.json, api/src/{db,auth,app,seed,server}.js, api/src/routes/requests.js
-npm install --prefix api          # added 68 packages (express 5)
-# wrote api/test/approval.test.js — real HTTP + real SQLite file, no mocks
-npm test --prefix api             # first run failed: "node --test test/" not valid on Node 24
-# fixed script to: node --test --test-reporter=spec test/approval.test.js
-npm test --prefix api             # 11 passed (14 after review fixes)
+node -v                                        # "command not found": installed but not on PATH
+export PATH="/c/Program Files/nodejs:$PATH"    # every new Git Bash window
+node -v; git --version                         # v24.19.0, 2.55.0
+jq --version                                   # not installed -> hooks written in Node
 ```
 
-Key design (see `api/src/db.js → approveRequest`):
-- `findRequest(db, id, tenantId)` — other tenant's request = 404.
-- One `BEGIN IMMEDIATE` transaction: idempotency lookup → `UPDATE … WHERE id=? AND tenant_id=? AND status='pending'` → audit event → stored response.
-- Idempotency keys in a DB table with a SHA-256 body hash (survives restart; different body → 409).
+## 1 · Audit (lesson 1-2) → [docs/audit.md](docs/audit.md)
 
-## Step 5 — React client (slice 3)
+`claude --permission-mode plan` with the course prompt. Map with a path for every boundary, one request traced
+UI → auth → persistence, three likely failures, unknowns. The course repo was not accessible ("Repository not found"),
+so this is a fresh implementation of the same contract. Commands verified by running them → `docs/engineering/commands.md`.
 
-```bash
-# wrote web/package.json, vite.config.js, index.html, src/{main.jsx,App.jsx,approvalClient.js,approvalClient.test.js}
-npm install --prefix web          # added 19 packages (react 19, vite 8)
-npm run build --prefix web        # built OK
-npm test --prefix web             # 3 passed (4 after review fixes)
-```
-UI: AbortController on fetch, one Idempotency-Key per intent reused on retry, loading/empty/error states, `aria-live` status.
+## 2 · Contract (lesson 1-3) → [docs/contract.md](docs/contract.md)
 
-## Step 6 — Move 3: CLAUDE.md + path-scoped rules
+Written before code: 401 / 403 / cross-tenant 404 / approve-or-reject once / replay / 409s / race → C1–C15.
 
-- [CLAUDE.md](CLAUDE.md) — short; only what every task needs. (Draft with `/init`, check what loaded with `/memory`.)
-- [.claude/rules/api.md](.claude/rules/api.md) — loads only for `api/src/**`, `api/test/**`.
-- [.claude/rules/react.md](.claude/rules/react.md) — loads only for `web/src/**`.
+## 3 · Plan and challenge (lesson 1-3) → [docs/plan.md](docs/plan.md)
 
-## Step 7 — Move 4: Hooks + permissions
+"Which assumption lets every test pass while production is still wrong?" → mocks + in-memory keys. v2 tests the real
+boundary. Two out-of-scope changes rejected with reasons. Rollback agreed before coding.
 
-- [.claude/hooks/guard-commands.mjs](.claude/hooks/guard-commands.mjs) — PreToolUse/Bash: denies prod hosts, force push, `rm -rf /`, DROP/TRUNCATE.
-- [.claude/hooks/block-secrets.mjs](.claude/hooks/block-secrets.mjs) — UserPromptSubmit: blocks `sk-ant-…`, `ghp_…`, AWS keys, `password=…`, private keys.
-- [.claude/settings.json](.claude/settings.json) — deny `.env`, `secrets/**`, `curl`, `wget`, force push; allow test/lint/build. Deny beats allow.
-
-## Step 8 — Move 5: Delegate safely
-
-- [.claude/agents/reviewer.md](.claude/agents/reviewer.md) — subagent with only `Read, Grep, Glob` (cannot edit).
-- [.claude/skills/rnit-evidence/SKILL.md](.claude/skills/rnit-evidence/SKILL.md) — repeatable evidence routine (`/rnit-evidence`).
-
-## Step 9 — Commit
+## 4 · Build, in slices
 
 ```bash
 git init -b main
-git config user.email "vinay.reddy@rnitss.com"; git config user.name "Vinay Reddy"   # repo-local only
-printf '* text=auto eol=lf\n' > .gitattributes
-git add -A && git commit -m "RNIT-TRAIN-101: tenant-safe, idempotent leave approval with Claude Code guards"
+npm install --prefix api       # express 5
+npm install --prefix web       # react 19, vite 8
+npm test --prefix api          # first run: 11 pass (baseline commit 477ff55)
+git switch -c feat/train-101-baseline-capstone
+# + reject transition, approve-vs-reject race (C11), body-tenant test (C13)
 ```
 
-## Step 10 — Move 6: Prove it (evidence in docs/evidence/)
+## 5 · CLAUDE.md and rules (lesson 2-1)
+
+Course starter downloaded from the LMS, adapted: [CLAUDE.md](CLAUDE.md), `.claude/rules/express.md` (`api/**`),
+`.claude/rules/react.md` (`web/src/**`). Why each line is where it is → `docs/engineering/enforcement-decisions.md`.
+
+## 6 · Skill, hooks, permissions (lessons 2-2, 2-3)
 
 ```bash
-npm run lint --prefix api   > docs/evidence/01-lint.txt        # exit 0
-npm test --prefix api       > docs/evidence/02-api-tests.txt   # 14 pass, 0 fail
-npm test --prefix web; npm run build --prefix web > docs/evidence/03-web.txt   # 4 pass, build OK
+npm install --save-dev prettier            # formatter for the PostToolUse hook
+npm run test:hooks                         # 36 pass (one real bug found and fixed in the rewrite regex)
 ```
+Four hooks (guard, secrets, format-after-edit, rewrite npm install → npm ci with a log), deny rules for `.env`,
+secrets, curl/wget/Invoke-WebRequest, `/rnit-evidence` skill with `disable-model-invocation`. Tool-access plan →
+`docs/engineering/tool-access.md`.
 
-**Mutation check** (throwaway branch):
+## 7 · Live drills inside Claude Code → [08-live-claude-drills.md](docs/evidence/08-live-claude-drills.md)
+
+`claude -p … --output-format stream-json` in this repo: Read `.env` → denied by settings; `cat .env` → blocked by
+hook; prod `psql` → blocked; injected instruction in an issue → ignored; `npm install` → rewritten to `npm ci` and
+logged, while Claude claimed it ran the original (the reason rewrites must be logged). The injection drill also
+found a real bug (ISSUE-17: other user's list visible for one frame) → failing test first, then fixed.
+
+## 8 · Delegate and review (lesson 3-1)
+
+Read-only reviewer (`tools: Read, Grep, Glob`) → 12 findings, all fixed → [06-review.md](docs/evidence/06-review.md).
+Integration review prompt from lesson 6-1 → [10-integration-review.md](docs/evidence/10-integration-review.md):
+no cross-tenant path; 5 findings fixed (incl. new test C15), 3 kept as named gaps. `/rnit-evidence` skill run →
+[11-rnit-evidence-skill.md](docs/evidence/11-rnit-evidence-skill.md).
+
+## 9 · Prove (lesson 3-2) → [docs/evidence/](docs/evidence/)
+
 ```bash
-git switch -c mutation/no-tenant-filter
-# replaced "tenant_id = ?" with "? IS NOT NULL" in findRequest and the guarded UPDATE (filter removed)
-npm test --prefix api       # RED: C3, C3b, C6c fail (11 pass, 3 fail) -> the tests really guard tenancy
-git checkout -- . && git switch main && git branch -D mutation/no-tenant-filter
+npm run lint --prefix api && npm run format:check   # 01
+npm test --prefix api                               # 02: 21 pass
+npm test --prefix web && npm run build --prefix web # 03: 8 pass
+# 04: mutation checks on a throwaway branch — M1 tenant lookup, M2 ISSUE-17, M3 state guard,
+#     M4 idempotency lookup, M5 key scoping: each turns named tests red; M1b stays green (documented)
+npm run test:hooks                                  # 05: 36 pass
+npm run build --prefix web && npm run evidence:capture   # 07 API transcript, 09 + screens/ UI states
 ```
-→ [docs/evidence/04-mutation.txt](docs/evidence/04-mutation.txt)
 
-**Guard drills** — fed each hook the JSON Claude Code sends → [docs/evidence/05-guards.txt](docs/evidence/05-guards.txt):
-prod psql, force push, DROP TABLE → denied; `npm test` → allowed; prompts with `sk-ant-…` / `password=` → blocked.
+Mistake made and corrected on the way: a `git checkout -- .` on the mutation branch also reverted uncommitted
+evidence files; evidence is now committed before any mutation.
 
-**Read-only review** with the reviewer checklist → [docs/evidence/06-review.md](docs/evidence/06-review.md).
-It found no tenant leak, but 12 gaps (biggest: the guard hook ignored the PowerShell tool on Windows; C8 was not
-really concurrent; C6 passed for the wrong reason). All 12 were fixed, new tests C6b, C6c, C8b were added,
-and every evidence file above was regenerated after the fixes. Then:
+## 10 · Hand off and publish
+
+[docs/tasks/RNIT-TRAIN-101.md](docs/tasks/RNIT-TRAIN-101.md): decisions, changed files, exact results, checks not
+run, risks, rollback, next action.
 
 ```bash
-git commit -am "Fix reviewer findings: PowerShell guard, fail-closed hooks, real concurrency test, abortable approvals"
+git switch main && git merge --no-ff feat/train-101-baseline-capstone
+git push origin main feat/train-101-baseline-capstone
+git archive --format=zip -o ../rnit-claude-code-advanced-assignment.zip HEAD
 ```
 
-## Step 11 — Handoff
+## Still for you to do
 
-[docs/handoff.md](docs/handoff.md): decisions, changed files, exact results, skipped checks, gaps, next step.
-
----
-
-## To do yourself (needs a person, not Claude)
-
-1. Run the live drills inside Claude Code in this folder (see the handoff, "Skipped checks").
-2. Human review — read `api/src/db.js` and the tests and be able to explain them.
-3. Read the assignment brief and adjust anything it asks for differently.
-4. Zip the folder **without** `node_modules` and submit it on the LMS yourself.
+1. Fill in [docs/notes/video-notes.md](docs/notes/video-notes.md) with your own timestamps (lesson 1-1).
+2. Run Claude Code once interactively in this folder and accept the trust dialog, so the settings `allow` list applies.
+3. Be able to explain `api/src/db.js → decideRequest`, the contract table and the mutation checks in your own words.
+4. Assignment 2 needs the course repo; assignment 4 needs your real two-week trial.

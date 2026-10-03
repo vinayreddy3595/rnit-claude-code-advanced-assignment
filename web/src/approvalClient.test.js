@@ -53,3 +53,19 @@ test('ISSUE-17: a list loaded for another user is never shown, even for one rend
   assert.deepEqual(visibleList(northList, 'tok-south-manager-c'), { state: 'loading', items: [] });
   assert.equal(visibleList(northList, 'tok-north-manager-b'), northList);
 });
+
+test('409 messages tell a race apart from a mismatched retry', async () => {
+  const reply = (status, error) => async () => ({ ok: false, status, json: async () => ({ error }) });
+  const intent = createDecisionIntent('101', 'reject', 'x');
+  const race = await sendDecision(intent, 't', reply(409, 'invalid_transition'));
+  const reuse = await sendDecision(intent, 't', reply(409, 'idempotency_key_reused_with_different_body'));
+  assert.match(race.message, /already decided/);
+  assert.match(reuse.message, /did not match the original/);
+  assert.notEqual(race.message, reuse.message);
+});
+
+test('403 and 5xx messages are accurate for reject and after a possible commit', () => {
+  assert.match(messageFor(403), /approve or reject/);
+  assert.match(messageFor(502), /Refresh to see whether/);
+  assert.doesNotMatch(messageFor(502), /not recorded/);
+});
