@@ -6,11 +6,11 @@ Node is installed at `C:\Program Files\nodejs` but was not on PATH. In Git Bash:
 | Purpose | Command | Verified result |
 |---|---|---|
 | Install API | `npm install --prefix api` | 68 packages |
-| API tests (real HTTP + SQLite) | `npm test --prefix api` | 11 passed, no DB server needed |
+| API tests (real HTTP + SQLite) | `npm test --prefix api` | 14 passed, no DB server needed |
 | API static check | `npm run lint --prefix api` | syntax check passes |
 | Run API | `npm start --prefix api` | http://localhost:3000 |
 | Install web | `npm install --prefix web` | 19 packages |
-| Web tests | `npm test --prefix web` | 3 passed |
+| Web tests | `npm test --prefix web` | 4 passed |
 | Web build | `npm run build --prefix web` | builds to web/dist |
 | Run web | `npm run dev --prefix web` | http://localhost:5173 |
 | e2e browser tests | — | **not available** (no Playwright set up) |

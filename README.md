@@ -16,8 +16,8 @@ A tenant-safe, idempotent leave-approval feature (Express API + React client) bu
 ```bash
 export PATH="/c/Program Files/nodejs:$PATH"   # Git Bash, if node is not on PATH
 npm install --prefix api && npm install --prefix web
-npm test --prefix api        # 11 integration tests (real HTTP + SQLite)
-npm test --prefix web        # 3 client tests
+npm test --prefix api        # 14 integration tests (real HTTP + SQLite)
+npm test --prefix web        # 4 client tests
 npm start --prefix api       # http://localhost:3000
 npm run dev --prefix web     # http://localhost:5173 — switch users in the dropdown
 ```

@@ -1,12 +1,12 @@
-# Mutation check — tenant filter removed on throwaway branch mutation/no-tenant-filter
+# Mutation check (2026-10-03T15:36:30+05:30) — tenant filter removed on throwaway branch mutation/no-tenant-filter
 # Expected: tests go RED. If they stay green, the tests prove nothing.
 
 $ git diff
 diff --git a/api/src/db.js b/api/src/db.js
-index 63a7f0e..4953d78 100644
+index a82b875..87c3e99 100644
 --- a/api/src/db.js
 +++ b/api/src/db.js
-@@ -54,7 +54,7 @@ export function findRequest(db, id, tenantId) {
+@@ -55,7 +55,7 @@ export function findRequest(db, id, tenantId) {
    return db
      .prepare(`SELECT id, tenant_id AS tenantId, employee_id AS employeeId, days, status,
                       decided_by AS decidedBy, comment
@@ -15,7 +15,7 @@ index 63a7f0e..4953d78 100644
      .get(id, tenantId);
  }
  
-@@ -98,7 +98,7 @@ export function approveRequest(db, { id, actor, key, bodyHash, comment }) {
+@@ -101,7 +101,7 @@ export function approveRequest(db, { id, actor, key, bodyHash, comment }) {
        // Guarded transition: only pending -> approved, and only in the actor's tenant.
        const changed = db
          .prepare(`UPDATE leave_requests SET status = 'approved', decided_by = ?, comment = ?
@@ -30,35 +30,38 @@ $ npm test --prefix api
 > rnit-leave-api@1.0.0 test
 > node --test --test-reporter=spec test/approval.test.js
 
-✔ C1: no session -> 401 (116.777ms)
-✔ C2: employee A (north) approves #101 -> 403, nothing changes (48.527ms)
-✖ C3: manager C (south) cannot read #101 -> 404 (76.944ms)
-✖ C3b: manager C (south) approves #101 -> 404, nothing changes (73.9414ms)
-✔ C4: manager B (north) approves #101 -> approved once, exactly one event (87.7299ms)
-✔ C5: same key + same body retried -> same result, still one event (93.1917ms)
-✔ C5b: replay survives an API restart (not an in-memory map) (82.8216ms)
-✔ C6: same key + different body -> 409 (76.4143ms)
-✔ C7: new key on an already-approved request -> 409 invalid transition (74.6718ms)
-✔ C8: concurrent approvals with different keys -> exactly one succeeds (112.115ms)
-✔ C9: missing Idempotency-Key -> 400 (65.2262ms)
-ℹ tests 11
+✔ C1: no session -> 401 (167.3429ms)
+✔ C2: employee A (north) approves #101 -> 403, nothing changes (95.978ms)
+✖ C3: manager C (south) cannot read #101 -> 404 (88.5273ms)
+✖ C3b: manager C (south) approves #101 -> 404, nothing changes (96.0224ms)
+✔ C4: manager B (north) approves #101 -> approved once, exactly one event (108.0161ms)
+✔ C5: same key + same body retried -> same result, still one event (92.8585ms)
+✔ C5b: replay survives an API restart (not an in-memory map) (113.8211ms)
+✔ C6: same key + different body -> 409 key-reuse (not just invalid transition) (97.4668ms)
+✔ C6b: same key reused on a different request id -> 409, second request untouched (93.4385ms)
+✖ C6c: a key first used on a hidden/missing id still works on a valid id (100.0133ms)
+✔ C7: new key on an already-approved request -> 409 invalid transition (134.0318ms)
+✔ C8: burst of 10 approvals with different keys (one process) -> exactly one succeeds (164.813ms)
+✔ C8b: 6 worker threads, own DB connections, approve at the same instant -> exactly one 200 (484.5616ms)
+✔ C9: missing Idempotency-Key -> 400 (83.379ms)
+ℹ tests 14
 ℹ suites 0
-ℹ pass 9
-ℹ fail 2
+ℹ pass 11
+ℹ fail 3
 ℹ cancelled 0
 ℹ skipped 0
 ℹ todo 0
-ℹ duration_ms 1173.6945
+ℹ duration_ms 2246.7071
 
 ✖ failing tests:
 
-test at test\approval.test.js:57:1
-✖ C3: manager C (south) cannot read #101 -> 404 (76.944ms)
+test at test\approval.test.js:60:1
+✖ C3: manager C (south) cannot read #101 -> 404 (88.5273ms)
   AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
   
   200 !== 404
   
-      at TestContext.<anonymous> (file:///C:/Users/RNIT/rnit-claude-code-advanced-assignment/api/test/approval.test.js:59:10)
+      at TestContext.<anonymous> (file:///C:/Users/RNIT/rnit-claude-code-advanced-assignment/api/test/approval.test.js:62:10)
       at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
       at async Test.run (node:internal/test_runner/test:1389:7)
       at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
@@ -70,13 +73,31 @@ test at test\approval.test.js:57:1
     diff: 'simple'
   }
 
-test at test\approval.test.js:64:1
-✖ C3b: manager C (south) approves #101 -> 404, nothing changes (73.9414ms)
+test at test\approval.test.js:67:1
+✖ C3b: manager C (south) approves #101 -> 404, nothing changes (96.0224ms)
   AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
   
   200 !== 404
   
-      at TestContext.<anonymous> (file:///C:/Users/RNIT/rnit-claude-code-advanced-assignment/api/test/approval.test.js:66:10)
+      at TestContext.<anonymous> (file:///C:/Users/RNIT/rnit-claude-code-advanced-assignment/api/test/approval.test.js:69:10)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 200,
+    expected: 404,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at test\approval.test.js:120:1
+✖ C6c: a key first used on a hidden/missing id still works on a valid id (100.0133ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  200 !== 404
+  
+      at TestContext.<anonymous> (file:///C:/Users/RNIT/rnit-claude-code-advanced-assignment/api/test/approval.test.js:124:10)
       at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
       at async Test.run (node:internal/test_runner/test:1389:7)
       at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {

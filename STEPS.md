@@ -44,7 +44,7 @@ npm install --prefix api          # added 68 packages (express 5)
 # wrote api/test/approval.test.js — real HTTP + real SQLite file, no mocks
 npm test --prefix api             # first run failed: "node --test test/" not valid on Node 24
 # fixed script to: node --test --test-reporter=spec test/approval.test.js
-npm test --prefix api             # 11 passed, 0 failed
+npm test --prefix api             # 11 passed (14 after review fixes)
 ```
 
 Key design (see `api/src/db.js → approveRequest`):
@@ -58,7 +58,7 @@ Key design (see `api/src/db.js → approveRequest`):
 # wrote web/package.json, vite.config.js, index.html, src/{main.jsx,App.jsx,approvalClient.js,approvalClient.test.js}
 npm install --prefix web          # added 19 packages (react 19, vite 8)
 npm run build --prefix web        # built OK
-npm test --prefix web             # 3 passed
+npm test --prefix web             # 3 passed (4 after review fixes)
 ```
 UI: AbortController on fetch, one Idempotency-Key per intent reused on retry, loading/empty/error states, `aria-live` status.
 
@@ -92,15 +92,15 @@ git add -A && git commit -m "RNIT-TRAIN-101: tenant-safe, idempotent leave appro
 
 ```bash
 npm run lint --prefix api   > docs/evidence/01-lint.txt        # exit 0
-npm test --prefix api       > docs/evidence/02-api-tests.txt   # 11 pass, 0 fail
-npm test --prefix web; npm run build --prefix web > docs/evidence/03-web.txt   # 3 pass, build OK
+npm test --prefix api       > docs/evidence/02-api-tests.txt   # 14 pass, 0 fail
+npm test --prefix web; npm run build --prefix web > docs/evidence/03-web.txt   # 4 pass, build OK
 ```
 
 **Mutation check** (throwaway branch):
 ```bash
 git switch -c mutation/no-tenant-filter
 # replaced "tenant_id = ?" with "? IS NOT NULL" in findRequest and the guarded UPDATE (filter removed)
-npm test --prefix api       # RED: C3 and C3b fail (9 pass, 2 fail) -> the tests really guard tenancy
+npm test --prefix api       # RED: C3, C3b, C6c fail (11 pass, 3 fail) -> the tests really guard tenancy
 git checkout -- . && git switch main && git branch -D mutation/no-tenant-filter
 ```
 → [docs/evidence/04-mutation.txt](docs/evidence/04-mutation.txt)
@@ -109,6 +109,13 @@ git checkout -- . && git switch main && git branch -D mutation/no-tenant-filter
 prod psql, force push, DROP TABLE → denied; `npm test` → allowed; prompts with `sk-ant-…` / `password=` → blocked.
 
 **Read-only review** with the reviewer checklist → [docs/evidence/06-review.md](docs/evidence/06-review.md).
+It found no tenant leak, but 12 gaps (biggest: the guard hook ignored the PowerShell tool on Windows; C8 was not
+really concurrent; C6 passed for the wrong reason). All 12 were fixed, new tests C6b, C6c, C8b were added,
+and every evidence file above was regenerated after the fixes. Then:
+
+```bash
+git commit -am "Fix reviewer findings: PowerShell guard, fail-closed hooks, real concurrency test, abortable approvals"
+```
 
 ## Step 11 — Handoff
 
