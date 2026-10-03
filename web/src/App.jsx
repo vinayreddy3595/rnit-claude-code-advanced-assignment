@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { API, createApprovalIntent, sendApproval, messageFor } from './approvalClient.js';
 
 // Synthetic demo users (see api/src/seed.js). Never real credentials.
@@ -12,14 +12,13 @@ export default function App() {
   const [token, setToken] = useState(USERS[1].token);
   const [list, setList] = useState({ state: 'loading', items: [] });
   const [status, setStatus] = useState('');
-  const [busyId, setBusyId] = useState(null);
-  const intents = useRef(new Map()); // request id -> pending intent (kept until success)
+  const [busy, setBusy] = useState(() => new Set()); // request ids with an approval in flight
+  const intents = useRef(new Map()); // request id -> pending intent (kept until a final answer)
+  const session = useRef(new AbortController()); // aborted when the signed-in user changes
 
-  useEffect(() => {
-    // Ignore stale responses when the user switches quickly.
-    const controller = new AbortController();
+  const load = useCallback((signal) => {
     setList({ state: 'loading', items: [] });
-    fetch(API, { headers: { authorization: `Bearer ${token}` }, signal: controller.signal })
+    return fetch(API, { headers: { authorization: `Bearer ${token}` }, signal })
       .then(async (res) => {
         if (!res.ok) throw new Error(messageFor(res.status));
         setList({ state: 'ready', items: await res.json() });
@@ -27,30 +26,51 @@ export default function App() {
       .catch((err) => {
         if (err.name !== 'AbortError') setList({ state: 'error', items: [], error: err.message });
       });
-    intents.current.clear();
-    return () => controller.abort();
   }, [token]);
 
+  useEffect(() => {
+    // Switching user aborts the list fetch AND any approval in flight, so a stale
+    // response can never update the new user's screen.
+    const controller = new AbortController();
+    session.current = controller;
+    intents.current = new Map();
+    setBusy(new Set());
+    setStatus('');
+    load(controller.signal);
+    return () => controller.abort();
+  }, [load]);
+
+  const setRowBusy = (id, on) =>
+    setBusy((prev) => {
+      const next = new Set(prev);
+      on ? next.add(id) : next.delete(id);
+      return next;
+    });
+
   async function approve(id) {
-    const intent = intents.current.get(id) ?? createApprovalIntent(id, 'Approved via web');
-    intents.current.set(id, intent);
-    setBusyId(id);
+    const { signal } = session.current;
+    const ownIntents = intents.current;
+    const intent = ownIntents.get(id) ?? createApprovalIntent(id, 'Approved via web');
+    ownIntents.set(id, intent);
+    setRowBusy(id, true);
     setStatus(`Approving request ${id}…`);
     try {
-      const result = await sendApproval(intent, token);
+      const result = await sendApproval(intent, token, fetch, signal);
+      if (signal.aborted) return;
+      ownIntents.delete(id); // the server gave a final answer for this intent
       if (result.ok) {
-        intents.current.delete(id);
         setList((l) => ({ ...l, items: l.items.map((r) => (r.id === id ? { ...r, status: 'approved' } : r)) }));
         setStatus(`Request ${id} approved.`);
       } else {
-        if (result.status !== 409) intents.current.delete(id);
         setStatus(result.message);
+        if (result.status === 409) load(signal); // someone else decided it: show the real state
       }
-    } catch {
-      // Network failure: keep the intent so "Retry" re-sends the same key.
+    } catch (err) {
+      if (err.name === 'AbortError') return;
+      // Network failure: keep the intent so pressing Approve again re-sends the same key.
       setStatus(`Network error. Press Approve again to retry request ${id} safely.`);
     } finally {
-      setBusyId(null);
+      if (!signal.aborted) setRowBusy(id, false);
     }
   }
 
@@ -81,8 +101,8 @@ export default function App() {
                 <td>{r.status}</td>
                 <td>
                   {r.status === 'pending' && (
-                    <button onClick={() => approve(r.id)} disabled={busyId === r.id} aria-busy={busyId === r.id}>
-                      {busyId === r.id ? 'Approving…' : `Approve ${r.id}`}
+                    <button onClick={() => approve(r.id)} disabled={busy.has(r.id)} aria-busy={busy.has(r.id)}>
+                      {busy.has(r.id) ? 'Approving…' : `Approve ${r.id}`}
                     </button>
                   )}
                 </td>

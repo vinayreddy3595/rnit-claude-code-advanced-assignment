@@ -1,0 +1,6 @@
+$ npm run lint --prefix api   (2026-10-03T15:36:23+05:30)
+
+> rnit-leave-api@1.0.0 lint
+> node --check src/app.js && node --check src/db.js && node --check src/auth.js && node --check src/routes/requests.js
+
+exit=0

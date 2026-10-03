@@ -6,6 +6,7 @@ export function openDb(file = ':memory:') {
   const db = new DatabaseSync(file);
   db.exec(`
     PRAGMA journal_mode = WAL;
+    PRAGMA busy_timeout = 5000; -- a second process waits for the write lock instead of failing
     CREATE TABLE IF NOT EXISTS users (
       id        TEXT PRIMARY KEY,
       tenant_id TEXT NOT NULL,
@@ -65,8 +66,10 @@ export function listRequests(db, tenantId) {
     .all(tenantId);
 }
 
-export function countEvents(db, requestId) {
-  return db.prepare('SELECT COUNT(*) AS n FROM audit_events WHERE request_id = ?').get(requestId).n;
+export function countEvents(db, requestId, tenantId) {
+  return db
+    .prepare('SELECT COUNT(*) AS n FROM audit_events WHERE request_id = ? AND tenant_id = ?')
+    .get(requestId, tenantId).n;
 }
 
 /**
@@ -83,7 +86,7 @@ export function approveRequest(db, { id, actor, key, bodyHash, comment }) {
                 FROM idempotency_keys WHERE tenant_id = ? AND actor_id = ? AND key = ?`)
       .get(actor.tenantId, actor.id, key);
     if (prior) {
-      db.exec('COMMIT');
+      db.exec('ROLLBACK'); // read-only path: nothing to commit
       if (prior.bodyHash !== bodyHash) {
         return { code: 409, body: { error: 'idempotency_key_reused_with_different_body' } };
       }
@@ -119,7 +122,7 @@ export function approveRequest(db, { id, actor, key, bodyHash, comment }) {
     db.exec('COMMIT');
     return result;
   } catch (err) {
-    db.exec('ROLLBACK');
+    if (db.isTransaction) db.exec('ROLLBACK'); // never mask the original error
     throw err;
   }
 }

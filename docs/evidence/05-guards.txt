@@ -1,0 +1,24 @@
+# Guard drills — hooks fed the same JSON Claude Code sends them (2026-10-03T15:33:13+05:30)
+
+## PreToolUse Bash: psql -h prod-db.rnit -c "select 1"
+{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"Blocked by RNIT guard (/prod[-.a-z0-9]*\\.rnit/i)"}}  [exit=0]
+
+## PreToolUse Bash: git push origin main --force
+{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"Blocked by RNIT guard (/git\\s+push\\b.*(--force|-f\\b)/i)"}}  [exit=0]
+
+## PreToolUse Bash: sqlite3 leave.db "DROP TABLE users"
+{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"Blocked by RNIT guard (/\\bDROP\\s+(TABLE|DATABASE)\\b/i)"}}  [exit=0]
+
+## PreToolUse Bash: npm test --prefix api
+  [exit=0]
+
+## UserPromptSubmit: my key is sk-ant-api03-abcdefghijklmnop please use it
+{"decision":"block","reason":"Prompt looks like it contains a secret. Remove it and use a placeholder."}  [exit=0]
+
+## UserPromptSubmit: db password=Hunter2 connect
+{"decision":"block","reason":"Prompt looks like it contains a secret. Remove it and use a placeholder."}  [exit=0]
+
+## UserPromptSubmit: Implement RNIT-TRAIN-101.
+  [exit=0]
+
+(empty output = allowed)

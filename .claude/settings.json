@@ -7,7 +7,11 @@
       "Read(./secrets/**)",
       "Bash(curl *)",
       "Bash(wget *)",
-      "Bash(git push --force *)"
+      "Bash(cat .env*)",
+      "Bash(git push --force *)",
+      "PowerShell(Invoke-WebRequest *)",
+      "PowerShell(Invoke-RestMethod *)",
+      "PowerShell(Get-Content .env*)"
     ],
     "allow": [
       "Bash(npm test *)",
@@ -19,7 +23,7 @@
   "hooks": {
     "PreToolUse": [
       {
-        "matcher": "Bash",
+        "matcher": "Bash|PowerShell",
         "hooks": [
           { "type": "command", "command": "node \"${CLAUDE_PROJECT_DIR}/.claude/hooks/guard-commands.mjs\"" }
         ]

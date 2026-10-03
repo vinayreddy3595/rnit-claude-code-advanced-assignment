@@ -1,0 +1,28 @@
+$ npm test --prefix api   (2026-10-03T15:36:24+05:30)
+
+> rnit-leave-api@1.0.0 test
+> node --test --test-reporter=spec test/approval.test.js
+
+✔ C1: no session -> 401 (149.2564ms)
+✔ C2: employee A (north) approves #101 -> 403, nothing changes (91.4464ms)
+✔ C3: manager C (south) cannot read #101 -> 404 (101.1812ms)
+✔ C3b: manager C (south) approves #101 -> 404, nothing changes (84.087ms)
+✔ C4: manager B (north) approves #101 -> approved once, exactly one event (99.2044ms)
+✔ C5: same key + same body retried -> same result, still one event (98.2832ms)
+✔ C5b: replay survives an API restart (not an in-memory map) (96.7731ms)
+✔ C6: same key + different body -> 409 key-reuse (not just invalid transition) (96.1899ms)
+✔ C6b: same key reused on a different request id -> 409, second request untouched (81.6338ms)
+✔ C6c: a key first used on a hidden/missing id still works on a valid id (93.848ms)
+✔ C7: new key on an already-approved request -> 409 invalid transition (99.7171ms)
+✔ C8: burst of 10 approvals with different keys (one process) -> exactly one succeeds (151.942ms)
+✔ C8b: 6 worker threads, own DB connections, approve at the same instant -> exactly one 200 (503.1772ms)
+✔ C9: missing Idempotency-Key -> 400 (79.3175ms)
+ℹ tests 14
+ℹ suites 0
+ℹ pass 14
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2043.2163
+exit=0

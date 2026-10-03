@@ -15,6 +15,15 @@ test('a retry of the same intent reuses the same Idempotency-Key', async () => {
   assert.equal(sent[0], sent[1]);
 });
 
+test('an approval can be aborted (stale response after switching user)', async () => {
+  let seen;
+  const fakeFetch = async (_url, init) => { seen = init.signal; throw new DOMException('aborted', 'AbortError'); };
+  const controller = new AbortController();
+  controller.abort();
+  await assert.rejects(sendApproval(createApprovalIntent('101', 'ok'), 't', fakeFetch, controller.signal), { name: 'AbortError' });
+  assert.equal(seen, controller.signal);
+});
+
 test('a new intent gets a new key', () => {
   assert.notEqual(createApprovalIntent('101', 'ok').key, createApprovalIntent('101', 'ok').key);
 });

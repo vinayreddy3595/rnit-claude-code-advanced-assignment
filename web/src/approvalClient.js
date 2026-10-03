@@ -23,9 +23,10 @@ export function createApprovalIntent(id, comment, newKey = () => crypto.randomUU
   return { id, comment, key: newKey() };
 }
 
-export async function sendApproval(intent, token, fetchImpl = fetch) {
+export async function sendApproval(intent, token, fetchImpl = fetch, signal) {
   const res = await fetchImpl(`${API}/${encodeURIComponent(intent.id)}/approve`, {
     method: 'POST',
+    signal,
     headers: {
       authorization: `Bearer ${token}`,
       'content-type': 'application/json',
