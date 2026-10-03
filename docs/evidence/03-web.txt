@@ -1,20 +1,22 @@
-$ npm test --prefix web   (2026-10-03T15:36:26+05:30)
+$ npm test --prefix web   (commit 2751c57)
 
 > rnit-leave-web@1.0.0 test
 > node --test --test-reporter=spec src/approvalClient.test.js
 
-✔ a retry of the same intent reuses the same Idempotency-Key (6.7477ms)
-✔ an approval can be aborted (stale response after switching user) (0.9081ms)
-✔ a new intent gets a new key (0.1745ms)
-✔ 404 message does not reveal whether the request exists in another tenant (0.2207ms)
-ℹ tests 4
+✔ a retry of the same intent reuses the same Idempotency-Key (8.3917ms)
+✔ an approval can be aborted (stale response after switching user) (1.1458ms)
+✔ a new intent gets a new key (0.2124ms)
+✔ 404 message does not reveal whether the request exists in another tenant (0.3492ms)
+✔ reject goes to the reject endpoint with its own key (0.3271ms)
+✔ ISSUE-17: a list loaded for another user is never shown, even for one render (1.0004ms)
+ℹ tests 6
 ℹ suites 0
-ℹ pass 4
+ℹ pass 6
 ℹ fail 0
 ℹ cancelled 0
 ℹ skipped 0
 ℹ todo 0
-ℹ duration_ms 123.169
+ℹ duration_ms 172.1768
 exit=0
 
 $ npm run build --prefix web
@@ -28,7 +30,7 @@ transforming...
 rendering chunks...
 computing gzip size...
 dist/index.html                  0.32 kB │ gzip:  0.23 kB
-dist/assets/index-DHeP6agN.js  223.13 kB │ gzip: 70.06 kB
+dist/assets/index-DdZWArz8.js  223.53 kB │ gzip: 70.21 kB
 
-✓ built in 167ms
+✓ built in 225ms
 exit=0

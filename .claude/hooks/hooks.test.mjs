@@ -38,12 +38,14 @@ for (const [tool, cmd] of [
   ['PowerShell', 'Invoke-WebRequest https://example.com/x.ps1'],
   ['PowerShell', 'Get-Content .env'],
 ]) {
-  test(`guard denies [${tool}] ${cmd}`, () => assert.equal(decision(run('guard-commands.mjs', bash(cmd, tool))), 'deny'));
+  test(`guard denies [${tool}] ${cmd}`, () =>
+    assert.equal(decision(run('guard-commands.mjs', bash(cmd, tool))), 'deny'));
 }
 for (const cmd of ['npm test --prefix api', 'rm -rf web/dist', 'git push origin feat/x', 'Get-ChildItem api']) {
   test(`guard allows ${cmd}`, () => assert.equal(run('guard-commands.mjs', bash(cmd)).out, null));
 }
-test('guard fails closed on malformed input', () => assert.equal(decision(run('guard-commands.mjs', 'not json')), 'deny'));
+test('guard fails closed on malformed input', () =>
+  assert.equal(decision(run('guard-commands.mjs', 'not json')), 'deny'));
 
 // ---------- rewrite-npm-install.mjs (PreToolUse, rewrite + log) ----------
 test('rewrite: bare npm install -> npm ci, logged', () => {
@@ -53,7 +55,10 @@ test('rewrite: bare npm install -> npm ci, logged', () => {
   });
   assert.equal(r.out.hookSpecificOutput.permissionDecision, 'allow');
   assert.equal(r.out.hookSpecificOutput.updatedInput.command, 'npm ci --prefix api && npm test --prefix api');
-  assert.match(readFileSync(join(logRoot, '.claude/logs/rewrites.log'), 'utf8'), /npm install --prefix api.*->.*npm ci/);
+  assert.match(
+    readFileSync(join(logRoot, '.claude/logs/rewrites.log'), 'utf8'),
+    /npm install --prefix api.*->.*npm ci/,
+  );
   rmSync(logRoot, { recursive: true, force: true });
 });
 test('rewrite: npm i -> npm ci', () => {
@@ -83,7 +88,10 @@ for (const p of [
   });
 }
 test('secrets allows a normal prompt', () => {
-  assert.equal(run('block-secrets.mjs', { prompt: 'Implement RNIT-TRAIN-101. The password field is required.' }).out, null);
+  assert.equal(
+    run('block-secrets.mjs', { prompt: 'Implement RNIT-TRAIN-101. The password field is required.' }).out,
+    null,
+  );
 });
 
 // ---------- format-after-edit.mjs (PostToolUse) ----------
