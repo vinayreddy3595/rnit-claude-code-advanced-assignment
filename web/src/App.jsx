@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { API, createApprovalIntent, sendApproval, messageFor } from './approvalClient.js';
+import { API, createDecisionIntent, sendDecision, messageFor, visibleList } from './approvalClient.js';
 
 // Synthetic demo users (see api/src/seed.js). Never real credentials.
 const USERS = [
@@ -10,23 +10,27 @@ const USERS = [
 
 export default function App() {
   const [token, setToken] = useState(USERS[1].token);
-  const [list, setList] = useState({ state: 'loading', items: [] });
+  const [ownedList, setList] = useState({ owner: null, state: 'loading', items: [] });
+  const list = visibleList(ownedList, token); // never render another user's rows (ISSUE-17)
   const [status, setStatus] = useState('');
   const [busy, setBusy] = useState(() => new Set()); // request ids with an approval in flight
-  const intents = useRef(new Map()); // request id -> pending intent (kept until a final answer)
+  const intents = useRef(new Map()); // "id:decision" -> pending intent (kept until a final answer)
   const session = useRef(new AbortController()); // aborted when the signed-in user changes
 
-  const load = useCallback((signal) => {
-    setList({ state: 'loading', items: [] });
-    return fetch(API, { headers: { authorization: `Bearer ${token}` }, signal })
-      .then(async (res) => {
-        if (!res.ok) throw new Error(messageFor(res.status));
-        setList({ state: 'ready', items: await res.json() });
-      })
-      .catch((err) => {
-        if (err.name !== 'AbortError') setList({ state: 'error', items: [], error: err.message });
-      });
-  }, [token]);
+  const load = useCallback(
+    (signal) => {
+      setList({ owner: token, state: 'loading', items: [] });
+      return fetch(API, { headers: { authorization: `Bearer ${token}` }, signal })
+        .then(async (res) => {
+          if (!res.ok) throw new Error(messageFor(res.status));
+          setList({ owner: token, state: 'ready', items: await res.json() });
+        })
+        .catch((err) => {
+          if (err.name !== 'AbortError') setList({ owner: token, state: 'error', items: [], error: err.message });
+        });
+    },
+    [token],
+  );
 
   useEffect(() => {
     // Switching user aborts the list fetch AND any approval in flight, so a stale
@@ -47,28 +51,30 @@ export default function App() {
       return next;
     });
 
-  async function approve(id) {
+  async function decide(id, decision) {
     const { signal } = session.current;
     const ownIntents = intents.current;
-    const intent = ownIntents.get(id) ?? createApprovalIntent(id, 'Approved via web');
-    ownIntents.set(id, intent);
+    const intentKey = `${id}:${decision}`;
+    const intent = ownIntents.get(intentKey) ?? createDecisionIntent(id, decision, `${decision} via web`);
+    ownIntents.set(intentKey, intent);
     setRowBusy(id, true);
-    setStatus(`Approving request ${id}…`);
+    setStatus(`${decision === 'approve' ? 'Approving' : 'Rejecting'} request ${id}…`);
     try {
-      const result = await sendApproval(intent, token, fetch, signal);
+      const result = await sendDecision(intent, token, fetch, signal);
       if (signal.aborted) return;
-      ownIntents.delete(id); // the server gave a final answer for this intent
+      ownIntents.delete(intentKey); // the server gave a final answer for this intent
       if (result.ok) {
-        setList((l) => ({ ...l, items: l.items.map((r) => (r.id === id ? { ...r, status: 'approved' } : r)) }));
-        setStatus(`Request ${id} approved.`);
+        const status = result.data.status;
+        setList((l) => ({ ...l, items: l.items.map((r) => (r.id === id ? { ...r, status } : r)) }));
+        setStatus(`Request ${id} ${status}.`);
       } else {
         setStatus(result.message);
         if (result.status === 409) load(signal); // someone else decided it: show the real state
       }
     } catch (err) {
       if (err.name === 'AbortError') return;
-      // Network failure: keep the intent so pressing Approve again re-sends the same key.
-      setStatus(`Network error. Press Approve again to retry request ${id} safely.`);
+      // Network failure: keep the intent so pressing the same button again re-sends the same key.
+      setStatus(`Network error. Press the same button again to retry request ${id} safely.`);
     } finally {
       if (!signal.aborted) setRowBusy(id, false);
     }
@@ -80,11 +86,17 @@ export default function App() {
       <label>
         Signed in as{' '}
         <select value={token} onChange={(e) => setToken(e.target.value)}>
-          {USERS.map((u) => <option key={u.token} value={u.token}>{u.label}</option>)}
+          {USERS.map((u) => (
+            <option key={u.token} value={u.token}>
+              {u.label}
+            </option>
+          ))}
         </select>
       </label>
 
-      <p role="status" aria-live="polite">{status}</p>
+      <p role="status" aria-live="polite">
+        {status}
+      </p>
 
       {list.state === 'loading' && <p>Loading requests…</p>}
       {list.state === 'error' && <p role="alert">{list.error}</p>}
@@ -92,7 +104,14 @@ export default function App() {
       {list.state === 'ready' && list.items.length > 0 && (
         <table>
           <caption>Leave requests</caption>
-          <thead><tr><th scope="col">ID</th><th scope="col">Days</th><th scope="col">Status</th><th scope="col">Action</th></tr></thead>
+          <thead>
+            <tr>
+              <th scope="col">ID</th>
+              <th scope="col">Days</th>
+              <th scope="col">Status</th>
+              <th scope="col">Action</th>
+            </tr>
+          </thead>
           <tbody>
             {list.items.map((r) => (
               <tr key={r.id}>
@@ -101,9 +120,18 @@ export default function App() {
                 <td>{r.status}</td>
                 <td>
                   {r.status === 'pending' && (
-                    <button onClick={() => approve(r.id)} disabled={busy.has(r.id)} aria-busy={busy.has(r.id)}>
-                      {busy.has(r.id) ? 'Approving…' : `Approve ${r.id}`}
-                    </button>
+                    <>
+                      <button
+                        onClick={() => decide(r.id, 'approve')}
+                        disabled={busy.has(r.id)}
+                        aria-busy={busy.has(r.id)}
+                      >
+                        {busy.has(r.id) ? 'Working…' : `Approve ${r.id}`}
+                      </button>{' '}
+                      <button onClick={() => decide(r.id, 'reject')} disabled={busy.has(r.id)}>
+                        Reject {r.id}
+                      </button>
+                    </>
                   )}
                 </td>
               </tr>

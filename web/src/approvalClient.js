@@ -6,25 +6,40 @@ export const API = 'http://localhost:3000/api/requests';
 const MESSAGES = {
   400: 'The request was incomplete. Please try again.',
   401: 'Your session has expired. Please sign in again.',
-  403: 'Only managers can approve leave.',
+  403: 'Only managers can approve or reject leave.',
   404: 'This request does not exist or is not visible to you.',
-  409: 'This request was already decided, or the retry did not match the original.',
+  409: 'This request was already decided. The list now shows its current status.',
+};
+// The server says which kind of conflict it was; a key reused with different content is a client bug, not a race.
+const ERRORS = {
+  idempotency_key_reused_with_different_body:
+    'This retry did not match the original request, so nothing was changed. Start a new decision.',
 };
 
-export function messageFor(status) {
-  return MESSAGES[status] ?? 'Something went wrong. Your decision was not recorded.';
+/**
+ * ISSUE-17: state updates after a user switch land one render late, so a list is tagged with
+ * the token it was loaded for and is shown only to that user. Correct by construction.
+ */
+const LOADING = { state: 'loading', items: [] };
+export function visibleList(list, token) {
+  return list.owner === token ? list : LOADING;
+}
+
+export function messageFor(status, error) {
+  // A 5xx may come after the server committed, so never claim the decision was not recorded.
+  return ERRORS[error] ?? MESSAGES[status] ?? 'Something went wrong. Refresh to see whether the decision was recorded.';
 }
 
 /**
- * One approval "intent" keeps one Idempotency-Key across retries, so a timeout
- * followed by a retry can never record two decisions.
+ * One decision "intent" (approve or reject) keeps one Idempotency-Key across retries,
+ * so a timeout followed by a retry can never record two decisions.
  */
-export function createApprovalIntent(id, comment, newKey = () => crypto.randomUUID()) {
-  return { id, comment, key: newKey() };
+export function createDecisionIntent(id, decision, comment, newKey = () => crypto.randomUUID()) {
+  return { id, decision, comment, key: newKey() };
 }
 
-export async function sendApproval(intent, token, fetchImpl = fetch, signal) {
-  const res = await fetchImpl(`${API}/${encodeURIComponent(intent.id)}/approve`, {
+export async function sendDecision(intent, token, fetchImpl = fetch, signal) {
+  const res = await fetchImpl(`${API}/${encodeURIComponent(intent.id)}/${intent.decision}`, {
     method: 'POST',
     signal,
     headers: {
@@ -35,5 +50,9 @@ export async function sendApproval(intent, token, fetchImpl = fetch, signal) {
     body: JSON.stringify({ comment: intent.comment }),
   });
   if (res.ok) return { ok: true, data: await res.json() };
-  return { ok: false, status: res.status, message: messageFor(res.status) };
+  const error = await res
+    .json()
+    .then((b) => b?.error)
+    .catch(() => undefined);
+  return { ok: false, status: res.status, error, message: messageFor(res.status, error) };
 }

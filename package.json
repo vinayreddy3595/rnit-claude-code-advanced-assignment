@@ -1,0 +1,14 @@
+{
+  "name": "rnit-claude-code-advanced-assignment",
+  "private": true,
+  "scripts": {
+    "format:check": "prettier --check api/src api/test web/src .claude/hooks",
+    "test": "npm test --prefix api && npm test --prefix web",
+    "test:hooks": "node --test --test-reporter=spec .claude/hooks/hooks.test.mjs",
+    "evidence:capture": "node scripts/capture-evidence.mjs"
+  },
+  "devDependencies": {
+    "prettier": "^3.6.0",
+    "puppeteer-core": "^25.12.0"
+  }
+}
