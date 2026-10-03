@@ -4,7 +4,6 @@ A tenant-safe, retry-safe leave-approval slice (Express API + React client) buil
 **audit → contract → plan → build → CLAUDE.md and rules → hooks and permissions → delegate → prove → hand off**.
 All data is synthetic (tenants `north` / `south`).
 
-New to all this? Open [docs/video/claude-code-from-zero.html](docs/video/claude-code-from-zero.html) in a browser (5 minutes).
 
 ## Where each assignment's evidence is
 
