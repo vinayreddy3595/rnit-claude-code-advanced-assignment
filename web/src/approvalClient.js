@@ -8,7 +8,7 @@ const MESSAGES = {
   401: 'Your session has expired. Please sign in again.',
   403: 'Only managers can approve leave.',
   404: 'This request does not exist or is not visible to you.',
-  409: 'This request was already decided, or the retry did not match the original.',
+  409: 'This request was already decided by someone else, or the retry did not match the original.',
 };
 
 export function messageFor(status) {
@@ -16,15 +16,15 @@ export function messageFor(status) {
 }
 
 /**
- * One approval "intent" keeps one Idempotency-Key across retries, so a timeout
- * followed by a retry can never record two decisions.
+ * One decision "intent" (approve or reject) keeps one Idempotency-Key across retries,
+ * so a timeout followed by a retry can never record two decisions.
  */
-export function createApprovalIntent(id, comment, newKey = () => crypto.randomUUID()) {
-  return { id, comment, key: newKey() };
+export function createDecisionIntent(id, decision, comment, newKey = () => crypto.randomUUID()) {
+  return { id, decision, comment, key: newKey() };
 }
 
-export async function sendApproval(intent, token, fetchImpl = fetch, signal) {
-  const res = await fetchImpl(`${API}/${encodeURIComponent(intent.id)}/approve`, {
+export async function sendDecision(intent, token, fetchImpl = fetch, signal) {
+  const res = await fetchImpl(`${API}/${encodeURIComponent(intent.id)}/${intent.decision}`, {
     method: 'POST',
     signal,
     headers: {

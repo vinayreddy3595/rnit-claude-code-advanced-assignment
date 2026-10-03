@@ -72,13 +72,17 @@ export function countEvents(db, requestId, tenantId) {
     .get(requestId, tenantId).n;
 }
 
+const DECISIONS = { approve: 'approved', reject: 'rejected' };
+
 /**
- * Approve a pending request exactly once.
+ * Decide (approve or reject) a pending request exactly once.
  * Runs in one IMMEDIATE transaction: idempotency lookup, guarded state transition,
  * audit event and stored response commit together or not at all.
  * Returns { code, body }.
  */
-export function approveRequest(db, { id, actor, key, bodyHash, comment }) {
+export function decideRequest(db, { id, actor, key, bodyHash, comment, decision }) {
+  const newStatus = DECISIONS[decision];
+  if (!newStatus) throw new Error(`unknown decision: ${decision}`);
   db.exec('BEGIN IMMEDIATE');
   try {
     const prior = db
@@ -98,17 +102,18 @@ export function approveRequest(db, { id, actor, key, bodyHash, comment }) {
     if (!request) {
       result = { code: 404, body: { error: 'not_found' } };
     } else {
-      // Guarded transition: only pending -> approved, and only in the actor's tenant.
+      // Guarded transition: only pending -> approved|rejected, and only in the actor's tenant.
+      // Whichever decision commits first wins; the other sees changes === 0 and gets 409.
       const changed = db
-        .prepare(`UPDATE leave_requests SET status = 'approved', decided_by = ?, comment = ?
+        .prepare(`UPDATE leave_requests SET status = ?, decided_by = ?, comment = ?
                   WHERE id = ? AND tenant_id = ? AND status = 'pending'`)
-        .run(actor.id, comment ?? null, id, actor.tenantId).changes;
+        .run(newStatus, actor.id, comment ?? null, id, actor.tenantId).changes;
       if (changed !== 1) {
         result = { code: 409, body: { error: 'invalid_transition', status: request.status } };
       } else {
         db.prepare(`INSERT INTO audit_events (tenant_id, request_id, actor_id, action)
-                    VALUES (?, ?, ?, 'approved')`).run(actor.tenantId, id, actor.id);
-        result = { code: 200, body: { id, status: 'approved', decidedBy: actor.id } };
+                    VALUES (?, ?, ?, ?)`).run(actor.tenantId, id, actor.id, newStatus);
+        result = { code: 200, body: { id, status: newStatus, decidedBy: actor.id } };
       }
     }
 
