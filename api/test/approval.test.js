@@ -212,12 +212,23 @@ test('C12: reject after approve -> 409 invalid transition, status stays approved
   assert.equal(res.status, 409);
   assert.equal((await res.json()).error, 'invalid_transition');
   assert.equal(findRequest(db, '101', 'north').status, 'approved');
+  assert.equal(countEvents(db, '101', 'north'), 1);
 });
 
 test('C13: tenantId in the body is not authority (manager C sends tenantId: north) -> 404', async () => {
   const res = await approve(FIXTURES.managerC, 'k1', { comment: 'ok', tenantId: 'north' });
   assert.equal(res.status, 404);
   assert.equal(findRequest(db, '101', 'north').status, 'pending');
+  assert.equal(countEvents(db, '101', 'north'), 0);
+});
+
+test('C15: South manager reuses North manager key -> no replay of the North answer (404)', async () => {
+  const north = await approve(FIXTURES.managerB, 'shared-key');
+  assert.equal(north.status, 200);
+  const res = await approve(FIXTURES.managerC, 'shared-key');
+  assert.equal(res.status, 404);
+  assert.equal(res.headers.get('idempotent-replayed'), null);
+  assert.deepEqual(await res.json(), { error: 'not_found' });
 });
 
 test('C14: employee A rejects #101 -> 403', async () => {
@@ -231,9 +242,11 @@ test('C14: employee A rejects #101 -> 403', async () => {
   assert.equal(countEvents(db, '101', 'north'), 0);
 });
 
-test('C9: missing Idempotency-Key -> 400', async () => {
-  const res = await approve(FIXTURES.managerB, undefined);
-  assert.equal(res.status, 400);
-  assert.equal(findRequest(db, '101', 'north').status, 'pending');
-  assert.equal(countEvents(db, '101', 'north'), 0);
-});
+for (const decision of ['approve', 'reject']) {
+  test(`C9: ${decision} without Idempotency-Key -> 400`, async () => {
+    const res = await call(`/api/requests/101/${decision}`, { user: FIXTURES.managerB, method: 'POST', body: {} });
+    assert.equal(res.status, 400);
+    assert.equal(findRequest(db, '101', 'north').status, 'pending');
+    assert.equal(countEvents(db, '101', 'north'), 0);
+  });
+}
