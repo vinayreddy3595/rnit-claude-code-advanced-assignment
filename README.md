@@ -39,5 +39,5 @@ api/src/                           db.js (all SQL), auth.js, routes/requests.js,
 api/test/                          approval.test.js (C1–C15), race-worker.js
 web/src/                           App.jsx, approvalClient.js (+ test)
 scripts/capture-evidence.mjs       replayable UI screenshots + API transcript
-docs/                              contract, audit, plan, tasks, engineering, evidence, notes, video
+docs/                              contract, audit, plan, tasks, engineering, evidence, notes
 ```
